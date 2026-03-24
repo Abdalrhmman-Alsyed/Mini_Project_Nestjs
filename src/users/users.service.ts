@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, Injectable } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { User } from "./entity/user.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -8,6 +8,7 @@ import { LoginDto } from "./dto/login.dto";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { AccessTokenType, JWTPayloadType } from "../utils/types";
 import { promises } from "dns";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class UsersService{
@@ -17,7 +18,8 @@ export class UsersService{
     constructor(
         @InjectRepository(User)
         private readonly usersRepository :Repository<User>,
-        private readonly jwtservice :JwtService
+        private readonly jwtservice :JwtService,
+        private readonly  config:ConfigService
     ){}
 
 
@@ -44,7 +46,7 @@ export class UsersService{
  
             newUser=await this.usersRepository.save(newUser);
             //@TODO ->genarete JWT Token 
-
+             // done 
              const accessToken =await this.genarateJWT({id:newUser.id,userType:newUser.userType});
             
             return { accessToken };
@@ -69,6 +71,36 @@ export class UsersService{
             
                 return {accessToken};
         }    
+
+
+
+
+        /**
+         * Get current user (logged in user)
+         * @param id  id of the logged in user
+         * @returns the user from the database
+         */
+        public async getCurrentUser(id :number) :Promise<User>{
+         
+            const user =await this.usersRepository.findOne({where:{id}});
+            if(!user) throw new NotFoundException("Hi Abd , user not found");
+            return user;
+
+        }
+
+
+        /**
+         * Get All users from the database
+         * @returns collection of users
+         */
+        public getAll():Promise<User[]>{
+            return this.usersRepository.find();
+        }
+
+
+
+    
+
 
 
         /**
