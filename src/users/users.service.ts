@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { User } from "./entity/user.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -7,8 +7,10 @@ import * as bcrypt from 'bcryptjs'
 import { LoginDto } from "./dto/login.dto";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { AccessTokenType, JWTPayloadType } from "../utils/types";
-import { promises } from "dns";
+
 import { ConfigService } from "@nestjs/config";
+import { UpdateUserDto } from "./dto/update_user.dto";
+import { UserType } from "src/utils/enums";
 
 @Injectable()
 export class UsersService{
@@ -35,8 +37,7 @@ export class UsersService{
             const userFromDb=await this.usersRepository.findOne({where:{email}});
             if(userFromDb)throw new BadRequestException("Hi Abd user alrady exist");
 
-            const salt =await bcrypt.genSalt(10);
-            const hashedPassword =await bcrypt.hash(password,salt);
+            const hashedPassword =await this.hashPassword(password);
 
             let newUser =this.usersRepository.create({
                 email,
@@ -58,6 +59,7 @@ export class UsersService{
              * @param loginDto data for log to user account 
              * @returns JWT (access token)
              */
+
         public async login(loginDto:LoginDto):Promise<AccessTokenType>{
             const {email,password}=loginDto;
 
@@ -71,6 +73,57 @@ export class UsersService{
             
                 return {accessToken};
         }    
+
+
+
+        /**
+         * 
+         * @param id id of logged in user 
+         * @param updateUserDto data for updating the user
+         * @returns updated user from the database
+         */
+public async update(id: number, updateUserDto: UpdateUserDto) {
+    const { password, username } = updateUserDto;
+
+    const user = await this.usersRepository.findOne({ where: { id } });
+
+    if (!user) {
+        throw new NotFoundException('User not found');
+    }
+
+    if (username) {
+        user.username = username;
+    }
+
+    if (password) {
+       
+        user.password = await this.hashPassword(password);
+    }
+
+    return this.usersRepository.save(user);
+}
+
+
+
+/**
+ * Delete user
+ * @param userId id of the user
+ * @param payload JWTpayload
+ * @returns a success message
+ */
+
+public async delete(userId:number ,payload :JWTPayloadType){
+    const user =await (this.getCurrentUser(userId));
+
+    if(user.id===payload?.id || payload.userType === UserType.ADMIN){
+        await this.usersRepository.remove(user);
+        return{message:"Hi Abd , User has been deleted"}
+
+    }
+
+
+    throw new ForbiddenException("acces denied , you are not allwoed ")
+}
 
 
 
@@ -110,6 +163,19 @@ export class UsersService{
          */
         private genarateJWT(payload:JWTPayloadType):Promise<string>{
             return this.jwtservice.signAsync(payload);
+        }
+
+
+
+
+        /**
+         * Hashing password 
+         * @param password plain text password 
+         * @returns hashed password
+         */
+        private async hashPassword (password :string):Promise<string>{
+            const salt =await bcrypt.genSalt(10);
+            return bcrypt.hash(password,salt);
         }
 
 }

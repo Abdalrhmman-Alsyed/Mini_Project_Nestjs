@@ -25,7 +25,7 @@ export class AuthRolesGuard implements CanActivate {
       context.getClass()
     ]);
 
-    if (!roles || roles.length === 0) return true; // إذا ما فيه roles محددة، يسمح
+    if (!roles || roles.length === 0) return true; 
 
     const request: Request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;

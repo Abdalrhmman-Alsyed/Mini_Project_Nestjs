@@ -1,4 +1,5 @@
 
+import { Exclude } from "class-transformer";
 import { Product } from "../../products/entity/products.entity";
 import { Review } from "../../reviews/entity/reviews.entity";
 import { CURRENT_TIMESTAMP } from "../../utils/constants";
@@ -20,6 +21,7 @@ export class User{
     @Column({type:'varchar',length:'250',unique:true})
     email:string;
 
+    @Exclude()
     @Column()
     password:string;
 
